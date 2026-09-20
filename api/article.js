@@ -34,7 +34,8 @@ max_output_tokens:3000
 if(!r.ok)return null;
 const d=await r.json();
 try{
-let raw=String(d.output_text||"").replace(/```(?:json)?/gi,"").replace(/```/g,"").trim();
+const rawOutput=Array.isArray(d.output)?d.output.flatMap(item=>Array.isArray(item && item.content)?item.content:[]).filter(part=>part && part.type==="output_text").map(part=>String(part.text||"")).join(""):"";
+let raw=String(rawOutput||d.output_text||"").replace(/```(?:json)?/gi,"").replace(/```/g,"").trim();
 const start=raw.indexOf("{"),end=raw.lastIndexOf("}");
 if(start<0||end<=start)return null;
 const parsed=JSON.parse(raw.slice(start,end+1));
