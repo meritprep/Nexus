@@ -59,7 +59,7 @@ a{text-decoration:none;color:inherit} button,input{font:inherit}
 .modal-image{width:100%;height:min(48vh,420px);object-fit:cover;display:block;background:#dfe2e7}.modal-body{padding:30px}.modal-label{display:inline-flex;padding:6px 9px;border-radius:999px;background:var(--blue2);color:#2849bd;font-size:9px;font-weight:850;letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px}
 .modal-close{float:right;border:1px solid var(--line);background:#fff;border-radius:10px;width:36px;height:36px;cursor:pointer;font-size:20px}.modal-tag{font-size:10px;font-weight:850;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);margin:12px 0 14px}
 .modal h2{font-size:clamp(32px,5vw,56px);line-height:.97;letter-spacing:-.06em;margin:0 0 18px}.modal p{font-size:15px;line-height:1.75;color:var(--muted);margin:0 0 18px}.modal-meta{font-size:11px;color:#969ba3;margin-bottom:22px}
-.source-btn{display:inline-flex;padding:12px 16px;border-radius:10px;background:var(--ink);color:#fff;font-size:12px;font-weight:750}
+.source-btn{display:inline-flex;padding:12px 16px;border-radius:10px;background:var(--ink);color:#fff;font-size:12px;font-weight:750}.source-note{font-size:11px;line-height:1.6;color:#8b9098;border-top:1px solid var(--line);padding-top:18px;margin-top:20px}
 @media(max-width:1050px){.categories{grid-template-columns:repeat(3,1fr)}.hero{grid-template-columns:1fr}.hero-side{grid-template-columns:1fr 1fr;grid-template-rows:1fr}.top-grid{grid-template-columns:1fr 1fr;grid-template-rows:330px 220px}.story.main{grid-column:span 2;grid-row:auto}.feed{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.shell{padding:0 16px}.nav{height:64px}.links{display:none}.hero{padding:28px 0 22px}.hero-main{padding:27px;min-height:410px;border-radius:20px}.hero h1{font-size:57px}.hero-side{grid-template-columns:1fr}.info-card{display:none}.top-grid{display:block}.story{height:235px;margin-top:10px}.story.main{height:350px}.categories{grid-template-columns:1fr 1fr}.category{height:108px}.feed{grid-template-columns:1fr}.footer{display:block}.footer span{display:block;margin:7px 0}}
 </style>
@@ -129,7 +129,7 @@ a{text-decoration:none;color:inherit} button,input{font:inherit}
     <div class="modal-tag" id="modalTag">Story</div>
     <h2 id="modalTitle"></h2><p id="modalSummary"></p>
     <div class="modal-meta" id="modalTime"></div>
-    <a class="source-btn" id="sourceLink" href="#" target="_blank" rel="noopener">View original source →</a>
+    <div class="source-note">NEXUS Brief · Based on the publisher’s available headline and summary. NEXUS does not reproduce the full article.</div>
     </div>
   </div>
 </div>
