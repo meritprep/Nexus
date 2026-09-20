@@ -5,7 +5,7 @@
 <section class="section"><div class="head"><h2>Explore</h2><span>Jump into a world</span></div><div class="rail"><div class="topic" data-cat="gaming"><b>Gaming</b></div><div class="topic" data-cat="tech"><b>Technology</b></div><div class="topic" data-cat="ai"><b>Artificial Intelligence</b></div><div class="topic" data-cat="music"><b>Music</b></div><div class="topic" data-cat="entertainment"><b>Entertainment</b></div><div class="topic" data-cat="trending"><b>Trending</b></div></div></section>
 <section class="section"><div class="head"><h2 id="moreHeading">More stories</h2><span>Fresh from live sources</span></div><div class="feed" id="feed"></div></section>
 <footer class="footer"><span>NEXUS · THE INTERNET, ORGANIZED.</span><span>Live stories refresh automatically.</span></footer></div>
-<div class="modal" id="modal" onclick="if(event.target===this)closeReader()"><article class="reader"><button class="close" onclick="closeReader()">×</button><img id="rimg" alt=""><div class="readerbody"><div class="tag" id="rtag"></div><h2 id="rtitle"></h2><div class="deck" id="rdeck"></div><div class="readertext" id="rtext"></div><div class="source" id="rsource"></div><div class="more-read" id="rmore" style="display:none"><img id="rmoreimg" alt=""><div class="more-read-body"><div class="tag">MORE TO READ</div><h3 id="rmorTitle"></h3><p id="rmoreSummary"></p><button id="rmoreBtn" type="button">Read this article</button></div></div></div></article></div>
+<div class="modal" id="modal" onclick="if(event.target===this)closeReader()"><article class="reader"><button class="close" onclick="closeReader()">×</button><img id="rimg" alt=""><div class="readerbody"><div class="tag" id="rtag"></div><h2 id="rtitle"></h2><div class="deck" id="rdeck"></div><div class="readertext" id="rtext"></div><div class="source" id="rsource"></div></div></article></div>
 <script>
 const FALLBACK_STORIES=[
 {id:"fallback-1",kind:"article",category:"tech",title:"How the web is changing around you",summary:"A NEXUS fallback story is available while live sources reconnect.",publishedAt:new Date(Date.now()-3600000).toISOString(),sourceName:"NEXUS"},
@@ -16,27 +16,37 @@ const FALLBACK_STORIES=[
 ];let stories=[],active="all";const q=document.getElementById("q"),grid=document.getElementById("grid"),feed=document.getElementById("feed");const esc=s=>String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));const nice=d=>{let x=new Date(d);return isNaN(x)?"Recently":x.toLocaleString([],{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})};const img=s=>s.imageUrl?'<img src="'+esc(s.imageUrl)+'" alt="'+esc(s.imageAlt||s.title)+'" loading="lazy">':'<div class="noimg">PHOTO UNAVAILABLE</div>';const cards=(list)=>list.slice(0,5).map((s,i)=>'<article class="story '+(i===0?"main":"small")+'" data-id="'+i+'">'+img(s)+'<div class="copy"><div class="tag">'+esc(s.category)+' · '+esc(s.sourceName)+'</div><h3>'+esc(s.title)+'</h3><div class="meta">'+nice(s.publishedAt)+' · Read in NEXUS</div></div></article>').join("");const items=(list)=>list.slice(5,20).map((s,i)=>'<article class="item" data-id="'+(i+5)+'">'+img(s)+'<div class="itembody"><div class="tag">'+esc(s.category)+' · '+esc(s.sourceName)+'</div><h3>'+esc(s.title)+'</h3><p>'+esc(s.summary||"Open for the full NEXUS Brief.")+'</p></div></article>').join("");function render(){let list=stories.filter(s=>active==="all"||s.category===active);grid.innerHTML=list.length?cards(list):'<div class="empty">No live stories are available in this view.</div>';feed.innerHTML=list.length?items(list):"";document.getElementById("heading").textContent=active==="all"?"Top News":active==="trending"?"Trending":active.toUpperCase();document.getElementById("moreHeading").textContent=active==="all"?"More stories":active.toUpperCase()+" stories";document.querySelectorAll("[data-cat]").forEach(x=>x.classList.toggle("on",x.dataset.cat===active));}
 async function load(){document.getElementById("status").textContent="Refreshing live sources…";try{let r=await fetch("/api/feed?limit=40"),d=await r.json();stories=(d.stories&&d.stories.length)?d.stories:FALLBACK_STORIES.slice();stories.sort((a,b)=>new Date(b.publishedAt||0)-new Date(a.publishedAt||0));document.getElementById("status").textContent=stories.length+" live stories · updated "+nice(d.updatedAt);render()}catch{stories=FALLBACK_STORIES.slice();document.getElementById("status").textContent="Live sources unavailable · showing fallback stories";render()}}
 function doSearch(){let t=q.value.trim().toLowerCase();active="all";stories=stories.filter(s=>{const hay=(s.title+" "+(s.summary||"")+" "+s.sourceName+" "+s.category).toLowerCase();return !t||hay.includes(t)});document.getElementById("heading").textContent=t?'Search: "'+q.value.trim()+'"':"Top News";render()}
-function cleanArticleText(v=""){return String(v||"").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,"").replace(/```(?:json|text)?/gi,"").replace(/```/g,"").replace(/\b(?:id|uuid|trace[_-]?id|request[_-]?id)\s*[:=]\s*[A-Za-z0-9_-]{12,}\b/gi,"").replace(/(?:^|\s)[A-Za-z0-9+/=_-]{32,}(?=\s|$)/g," ").replace(/\s{2,}/g," ").trim()}let relatedStoryId="";function showMore(base){const pool=stories.filter(s=>s.id!==base.id&&(active==="all"||s.category===active));const related=pool.find(s=>s.category===base.category)||pool[0];const box=document.getElementById("rmore");if(!related){box.style.display="none";return}relatedStoryId=related.id;document.getElementById("rmorTitle").textContent=cleanArticleText(related.title);document.getElementById("rmoreSummary").textContent=cleanArticleText(related.summary)||"Open this story for more context.";const im=document.getElementById("rmoreimg");if(related.imageUrl){im.src=related.imageUrl;im.alt=related.imageAlt||related.title;im.style.display="block"}else{im.removeAttribute("src");im.style.display="none"}box.style.display="block"}async function openReader(i){
-const base=stories.filter(s=>active==="all"||s.category===active)[i];
+function cleanArticleText(v=""){return String(v||"").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,"").replace(/\`\`\`(?:json|text)?/gi,"").replace(/\`\`\`/g,"").replace(/\s{2,}/g," ").trim()}
+
+async function openReader(i){
+const list=stories.filter(s=>active==="all"||s.category===active);
+const base=list[i];
 if(!base)return;
+
 const modal=document.getElementById("modal");
+const image=document.getElementById("rimg");
 modal.classList.add("show");
 document.body.style.overflow="hidden";
 
 const title=cleanArticleText(base.title);
-const summary=cleanArticleText(base.summary||"");
+const summary=cleanArticleText(base.summary);
+document.getElementById("rtag").textContent=(base.category||"story")+" · "+(base.sourceName||"source");
 document.getElementById("rtitle").textContent=title;
-document.getElementById("rtag").textContent=cleanArticleText((base.category||"story")+" · "+(base.sourceName||"source"));
-document.getElementById("rdeck").textContent=summary||"A NEXUS Brief about this story.";
-document.getElementById("rsource").textContent="NEXUS Brief · Building the article…";
-document.getElementById("rtext").innerHTML=
-  "<p><strong>The story</strong><br>"+esc(summary||"NEXUS is preparing a detailed brief from the publisher's reporting.")+"</p>"+
-  "<p><strong>What to know</strong><br>This article is being prepared from the source material attached to this live story. The detailed NEXUS Brief will appear here without sending you away from NEXUS.</p>"+
-  "<p><strong>Why it matters</strong><br>NEXUS is organizing the key facts, context, and developments into an original summary so you can understand the story quickly.</p>";
+document.getElementById("rdeck").textContent=summary||"NEXUS Brief";
+document.getElementById("rsource").textContent="NEXUS Brief · Loading…";
+document.getElementById("rtext").innerHTML="<p><strong>About this story</strong><br>"+esc(summary||"NEXUS is preparing a detailed original brief from the publisher material.")+"</p><p><strong>More context</strong><br>This story is being organized into a clear NEXUS Brief so the important facts and context can be read without leaving the site.</p>";
 
-showMore(base);
-const image=document.getElementById("rimg");
-if(base.imageUrl){image.src=base.imageUrl;image.alt=base.imageAlt||title;image.style.display="block"}else{image.removeAttribute("src");image.style.display="none"}
+if(base.imageUrl){
+image.src=base.imageUrl;
+image.alt=base.imageAlt||title;
+image.style.display="block";
+}else{
+image.removeAttribute("src");
+image.alt="";
+image.style.display="none";
+}
+
+modal.scrollTop=0;
 
 if(String(base.id).startsWith("fallback-")){
 document.getElementById("rsource").textContent="NEXUS fallback story";
@@ -47,21 +57,24 @@ try{
 const r=await fetch("/api/article?id="+encodeURIComponent(base.id),{headers:{"Accept":"application/json"}});
 const a=await r.json();
 if(!r.ok)throw new Error(a?.error||"Article request failed");
+
 const sections=Array.isArray(a.sections)?a.sections.filter(x=>x&&x.text):[];
 document.getElementById("rtitle").textContent=cleanArticleText(a.title||title);
-document.getElementById("rdeck").textContent=cleanArticleText(a.deck||a.summary||summary)||"";
-if(a.imageUrl){image.src=a.imageUrl;image.alt=a.imageAlt||a.title||title;image.style.display="block"}
+document.getElementById("rdeck").textContent=cleanArticleText(a.deck||a.summary||summary)||"NEXUS Brief";
+if(a.imageUrl){
+image.src=a.imageUrl;
+image.alt=a.imageAlt||a.title||title;
+image.style.display="block";
+}
 document.getElementById("rtext").innerHTML=sections.length
-?sections.map(x=>"<p><strong>"+esc(cleanArticleText(x.heading||""))+"</strong>"+(x.heading?"<br>":"")+esc(cleanArticleText(x.text||""))+"</p>").join("")
-:"<p><strong>Article brief</strong><br>"+esc(cleanArticleText(a.summary||summary||""))+"</p>";
+?sections.map(x=>"<p>"+(x.heading?"<strong>"+esc(cleanArticleText(x.heading))+"</strong><br>":"")+esc(cleanArticleText(x.text))+"</p>").join("")
+:"<p><strong>Article brief</strong><br>"+esc(cleanArticleText(a.summary||summary||"The detailed brief is not available yet."))+"</p>";
 document.getElementById("rsource").textContent=a.note||"NEXUS Brief · Rephrased from source material.";
-}catch(error){
+}catch{
 document.getElementById("rsource").textContent="NEXUS Brief · Source brief unavailable";
-document.getElementById("rtext").innerHTML=
-"<p><strong>Story overview</strong><br>"+esc(summary||"The publisher has released a new story, but the detailed source brief is temporarily unavailable.")+"</p>"+
-"<p><strong>Read inside NEXUS</strong><br>The story remains open here so you can read the available information without being sent to another page.</p>";
+document.getElementById("rtext").innerHTML="<p><strong>Story overview</strong><br>"+esc(summary||"The publisher has released a new story, but the detailed brief is temporarily unavailable.")+"</p><p><strong>Read more about it</strong><br>The story remains open in this NEXUS reader, with the available source summary shown directly below the picture.</p>";
 }
 }
 
-document.getElementById("rmoreBtn").onclick=()=>{const related=stories.find(s=>s.id===relatedStoryId);if(related){const list=stories.filter(s=>active==="all"||s.category===active),idx=list.findIndex(s=>s.id===related.id);if(idx>=0)openReader(idx)}};document.getElementById("rmoreBtn").addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();const related=stories.find(s=>s.id===relatedStoryId);if(!related)return;const list=stories.filter(s=>active==="all"||s.category===active);const idx=list.findIndex(s=>s.id===related.id);if(idx>=0){openReader(idx)}},true);function closeReader(){document.getElementById("modal").classList.remove("show");document.body.style.overflow=""}document.addEventListener("click",e=>{let c=e.target.closest("[data-cat]");if(c){active=c.dataset.cat;load().catch(()=>{});return}let s=e.target.closest("[data-id]");if(s)openReader(Number(s.dataset.id))});document.getElementById("form").addEventListener("submit",e=>{e.preventDefault();load().then(()=>{const term=q.value.trim().toLowerCase();if(term){const base=stories;stories=base.filter(s=>(s.title+" "+(s.summary||"")+" "+s.sourceName+" "+s.category).toLowerCase().includes(term));document.getElementById("heading").textContent='Search: "'+q.value.trim()+'"';render()}})});document.getElementById("focusSearch").onclick=()=>q.focus();document.addEventListener("keydown",e=>{if(e.key==="Escape")closeReader()});load();setInterval(load,300000);
+function closeReader(){document.getElementById("modal").classList.remove("show");document.body.style.overflow=""}document.addEventListener("click",e=>{const story=e.target.closest(".story,.item");if(story){e.preventDefault();openReader(Number(story.dataset.id));return}const c=e.target.closest("[data-cat]");if(c){active=c.dataset.cat;load().catch(()=>{});return}});document.getElementById("form").addEventListener("submit",e=>{e.preventDefault();load().then(()=>{const term=q.value.trim().toLowerCase();if(term){const base=stories;stories=base.filter(s=>(s.title+" "+(s.summary||"")+" "+s.sourceName+" "+s.category).toLowerCase().includes(term));document.getElementById("heading").textContent='Search: "'+q.value.trim()+'"';render()}})});document.getElementById("focusSearch").onclick=()=>q.focus();document.addEventListener("keydown",e=>{if(e.key==="Escape")closeReader()});load();setInterval(load,300000);
 </script></body></html>
