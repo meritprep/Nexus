@@ -63,6 +63,19 @@ button,input{font:inherit}
 .footer{border-top:1px solid var(--line);margin-top:80px;padding:27px 0 45px;display:flex;justify-content:space-between;color:#92928e;font-size:10px}
 @media(max-width:1000px){.categories{grid-template-columns:repeat(3,1fr)}.links{gap:13px}.hero{gap:35px}.grid{grid-template-columns:1fr 1fr;grid-template-rows:330px 220px}.main{grid-column:span 2;grid-row:auto}.feed{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.shell{padding:0 17px}.nav{height:64px}.links{display:none}.actions{margin-left:auto}.hero{grid-template-columns:1fr;padding:58px 0 45px}.hero-note{display:none}.hero h1{font-size:58px}.categories{grid-template-columns:1fr 1fr}.grid{display:block}.story{height:240px;margin-top:10px}.main{height:360px}.feed{grid-template-columns:1fr}.footer{display:block}.footer span{display:block;margin:7px 0}}
+
+.story{cursor:pointer}
+.item{cursor:pointer;transition:transform .2s,box-shadow .2s}
+.item:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+.modal{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(20,20,20,.35);backdrop-filter:blur(8px)}
+.modal.show{display:flex}
+.modal-card{width:min(720px,100%);max-height:90vh;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:0 25px 80px rgba(0,0,0,.18);padding:28px}
+.modal-close{float:right;border:1px solid var(--line);background:#fff;border-radius:9px;width:34px;height:34px;cursor:pointer}
+.modal-tag{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin:10px 0 14px}
+.modal h2{font-size:clamp(30px,5vw,52px);line-height:.98;letter-spacing:-.055em;margin:0 0 17px}
+.modal p{font-size:15px;line-height:1.7;color:var(--muted);margin:0 0 18px}
+.modal-meta{font-size:11px;color:#999;margin-bottom:22px}
+.source-btn{display:inline-flex;padding:11px 15px;border-radius:10px;background:var(--text);color:#fff;font-size:12px;font-weight:750}
 </style>
 </head>
 <body>
@@ -113,60 +126,46 @@ button,input{font:inherit}
 <footer class="footer"><span>NEXUS · EXPLORE WHAT MATTERS.</span><span>Original sources remain attached to every story.</span></footer>
 </div>
 
-<script>
+<div class="modal" id="storyModal" role="dialog" aria-modal="true" onclick="if(event.target===this)closeStory()"><div class="modal-card"><button class="modal-close" onclick="closeStory()" aria-label="Close">×</button><div class="modal-tag" id="modalTag">Story</div><h2 id="modalTitle"></h2><p id="modalSummary"></p><div class="modal-meta" id="modalTime"></div><a class="source-btn" id="sourceLink" href="#" target="_blank" rel="noopener">View original source →</a></div></div><script>
 const fallbackImage="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1400&q=85";
 let stories=[];
 
 function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function when(d){const x=new Date(d);return Number.isNaN(x.getTime())?"Recently":x.toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});}
+function nexusTitle(t){
+  const title=String(t||"").replace(/^\s*[^:]{1,35}:\s*/,"").replace(/\s+/g," ").trim();
+  return title.length>92 ? title.slice(0,89)+"…" : title;
+}
+function nexusSummary(s){
+  const desc=String(s.description||"").replace(/\s+/g," ").trim();
+  if(desc){
+    const first=desc.split(/(?<=[.!?])\s+/)[0];
+    if(first.length>=45) return first.length>180?first.slice(0,177)+"…":first;
+  }
+  return "NEXUS is tracking this story from "+(s.source||"the original source")+". Open the source for the full report and context.";
+}
 function card(s,i){
   const cls=i===0?"story main":"story small";
   const img=s.image||fallbackImage;
-  return '<article class="'+cls+'"><img src="'+esc(img)+'" alt="" loading="lazy" onerror="this.src=\''+fallbackImage+'\'"><div class="copy"><div class="tag">'+esc(s.category)+" · "+esc(s.source)+'</div><h3><a href="'+esc(s.link)+'" target="_blank" rel="noopener">'+esc(s.title)+'</a></h3><div class="meta">'+esc(when(s.publishedAt))+'</div></div></article>';
+  return '<article class="'+cls+'" onclick="openStory(event,'+JSON.stringify(s).replace(/</g,"\\u003c")+')"><img src="'+esc(img)+'" alt="" loading="lazy" onerror="this.src=\''+fallbackImage+'\'"><div class="copy"><div class="tag">'+esc(s.category)+" · "+esc(s.source)+'</div><h3>'+esc(nexusTitle(s.title))+'</h3><div class="meta">'+esc(when(s.publishedAt))+' · Read on NEXUS</div></div></article>';
 }
 function item(s){
   const img=s.image||fallbackImage;
-  return '<article class="item"><img src="'+esc(img)+'" alt="" loading="lazy" onerror="this.src=\''+fallbackImage+'\'"><div class="item-copy"><div class="tag">'+esc(s.category)+" · "+esc(s.source)+'</div><h3><a href="'+esc(s.link)+'" target="_blank" rel="noopener">'+esc(s.title)+'</a></h3><p>'+esc((s.description||"Open the original source to read the full story.").slice(0,150))+'</p></div></article>';
+  return '<article class="item" onclick="openStory(event,'+JSON.stringify(s).replace(/</g,"\\u003c")+')"><img src="'+esc(img)+'" alt="" loading="lazy" onerror="this.src=\''+fallbackImage+'\'"><div class="item-copy"><div class="tag">'+esc(s.category)+" · "+esc(s.source)+'</div><h3>'+esc(nexusTitle(s.title))+'</h3><p>'+esc(nexusSummary(s))+'</p></div></article>';
 }
-function render(list){
-  const top=list.slice(0,4), rest=list.slice(4,10);
-  document.getElementById("grid").innerHTML=top.length?top.map(card).join(""):'<div class="empty">No stories found. Try another search.</div>';
-  document.getElementById("feed").innerHTML=rest.length?rest.map(item).join(""):'<div class="empty">No additional stories available right now.</div>';
+function openStory(event,s){
+  event.preventDefault();
+  event.stopPropagation();
+  document.getElementById("modalTag").textContent=(s.category||"Story")+" · "+(s.source||"Source");
+  document.getElementById("modalTitle").textContent=nexusTitle(s.title);
+  document.getElementById("modalSummary").textContent=nexusSummary(s);
+  document.getElementById("modalTime").textContent=when(s.publishedAt);
+  document.getElementById("sourceLink").href=s.link||"#";
+  document.getElementById("storyModal").classList.add("show");
+  document.body.style.overflow="hidden";
 }
-async function load(){
-  try{
-    const r=await fetch("/api/feed",{cache:"no-store"});
-    if(!r.ok)throw new Error();
-    const data=await r.json();
-    stories=data.stories||[];
-    render(stories);
-    document.getElementById("status").textContent="Live feed · updated "+when(data.updatedAt);
-  }catch(e){
-    document.getElementById("status").textContent="Showing curated fallback";
-    stories=[
-      {title:"Explore the internet by interest, not by noise.",category:"NEXUS",source:"Editorial",link:"#",publishedAt:new Date().toISOString(),image:fallbackImage,description:"NEXUS organizes discovery around topics and original sources."}
-    ];
-    render(stories);
-  }
+function closeStory(){
+  document.getElementById("storyModal").classList.remove("show");
+  document.body.style.overflow="";
 }
-document.getElementById("date").textContent=new Date().toLocaleDateString([], {month:"long",day:"numeric",year:"numeric"});
-document.getElementById("searchForm").addEventListener("submit",e=>{
-  e.preventDefault();
-  const q=document.getElementById("q").value.trim().toLowerCase();
-  if(!q){render(stories);return;}
-  render(stories.filter(s=>(s.title+" "+s.description+" "+s.category+" "+s.source).toLowerCase().includes(q)));
-  document.getElementById("now").scrollIntoView({behavior:"smooth",block:"start"});
-  document.getElementById("status").textContent="Search results";
-});
-document.querySelectorAll(".category").forEach(el=>el.addEventListener("click",()=>{
-  const cat=el.dataset.category;
-  const filtered=stories.filter(s=>String(s.category).toLowerCase()===cat.toLowerCase());
-  render(filtered);
-  document.getElementById("status").textContent=cat+" · "+filtered.length+" stories";
-  document.getElementById("now").scrollIntoView({behavior:"smooth",block:"start"});
-}));
-load();
-setInterval(load,300000);
-</script>
-</body>
-</html>
+10065
