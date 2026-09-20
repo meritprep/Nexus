@@ -124,10 +124,13 @@ a{text-decoration:none;color:inherit} button,input{font:inherit}
 <div class="modal" id="storyModal" role="dialog" aria-modal="true" onclick="if(event.target===this)closeStory()">
   <div class="modal-card">
     <button class="modal-close" onclick="closeStory()" aria-label="Close">×</button>
+    <img class="modal-image" id="modalImage" src="" alt="">
+    <div class="modal-body">
     <div class="modal-tag" id="modalTag">Story</div>
     <h2 id="modalTitle"></h2><p id="modalSummary"></p>
     <div class="modal-meta" id="modalTime"></div>
     <a class="source-btn" id="sourceLink" href="#" target="_blank" rel="noopener">View original source →</a>
+    </div>
   </div>
 </div>
 
@@ -188,7 +191,9 @@ function searchStories(){
 }
 function openStory(event,s){
   event.preventDefault();event.stopPropagation();
-  document.getElementById("modalImage").src=imageFor(s);\n  document.getElementById("modalImage").onerror=()=>{document.getElementById("modalImage").src=fallbackImages[s.category]||fallbackImages.World;};\n  document.getElementById("modalTag").textContent=(s.category||"Story")+" · "+(s.source||"Source");
+  document.getElementById("modalImage").src=imageFor(s);
+  document.getElementById("modalImage").onerror=()=>{document.getElementById("modalImage").src=fallbackImages[s.category]||fallbackImages.World;};
+  document.getElementById("modalTag").textContent=(s.category||"Story")+" · "+(s.source||"Source");
   document.getElementById("modalTitle").textContent=nexusTitle(s.title);
   document.getElementById("modalSummary").textContent=nexusSummary(s);
   document.getElementById("modalTime").textContent=when(s.publishedAt);
@@ -197,7 +202,8 @@ function openStory(event,s){
 }
 function closeStory(){document.getElementById("storyModal").classList.remove("show");document.body.style.overflow="";}
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeStory();});
-document.querySelectorAll("[data-category]").forEach(el=>el.addEventListener("click",()=>apply(el.dataset.category)));\ndocument.querySelectorAll(".nav-cat").forEach(el=>el.addEventListener("click",()=>apply(el.dataset.category)));
+document.querySelectorAll("[data-category]").forEach(el=>el.addEventListener("click",()=>apply(el.dataset.category)));
+document.querySelectorAll(".nav-cat").forEach(el=>el.addEventListener("click",()=>apply(el.dataset.category)));
 document.getElementById("searchForm").addEventListener("submit",e=>{e.preventDefault();searchStories();});
 document.getElementById("date").textContent=new Date().toLocaleDateString([], {weekday:"long",month:"short",day:"numeric"});
 fetch("/api/feed").then(r=>{if(!r.ok)throw new Error("feed");return r.json();}).then(data=>{
