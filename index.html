@@ -23,7 +23,7 @@
 <div class="shell">
 <header class="nav"><div class="logo">NEXUS</div><nav class="links"><a href="#now">Now</a><a href="#explore">Gaming</a><a href="#explore">Tech</a><a href="#explore">AI</a><a href="#explore">Culture</a><a href="#explore">Music</a><a href="#explore">Tools</a></nav><div class="actions"><a class="chip" href="#search">⌕ Search</a><a class="chip" href="#">Sign in</a></div></header>
 
-<section class="hero" id="search"><div><div class="eyebrow">LIVE · SEPTEMBER 19, 2026</div><h1>The internet,<br>right now.</h1><p>NEXUS turns the moving internet into one visual stream — real stories, real events and real sources, organized without the noise.</p><div class="search"><input id="q" placeholder="Search the internet…"><button onclick="search()">Explore</button></div></div><aside class="note"><strong>Built around what is actually happening.</strong>Every story carries a source and time. The production version should use licensed feeds/APIs instead of invented headlines or generated event photos.</aside></section>
+<section class="hero" id="search"><div><div class="eyebrow">LIVE · SEPTEMBER 19, 2026</div><h1>The internet,<br>right now.</h1><p>NEXUS turns the moving internet into one visual stream — real stories, real events and real sources, organized without the noise.</p><div class="search"><input id="q" placeholder="Search the internet…"><button onclick="search()">Explore</button></div></div><aside class="note"><strong>Built around what is actually happening.</strong>Every live story comes from a source feed and keeps its original link. NEXUS displays headlines and metadata rather than inventing reporting.</aside></section>
 
 <section id="now"><div class="head"><h2>Right now</h2><span>Live editorial feed · current-day layout</span></div>
 <div class="grid">
@@ -46,10 +46,14 @@
 <article class="item"><img src="https://spnimage.edaily.co.kr/images/photo/files/NP/S/2026/01/PS26010200016.jpg" alt=""><div class="tag">World</div><h3>One visual feed for the events people are talking about.</h3><p>Sources, timestamps and context stay attached to the story.</p></article>
 </div></section>
 
-<footer class="footer"><span>NEXUS · THE INTERNET, ORGANIZED.</span><span>Prototype · production feeds and image licensing come next</span></footer>
+<footer class="footer"><span>NEXUS · THE INTERNET, ORGANIZED.</span><span>Live RSS ingestion · verify image rights before production use</span></footer>
 </div>
 <script>
-function search(){const q=document.getElementById('q').value.trim();if(q) alert('NEXUS search architecture ready for real indexing: '+q);else document.getElementById('q').focus()}
-document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function when(d){const x=new Date(d);return Number.isNaN(x.getTime())?'Just now':x.toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
+function storyCard(s,i){const cls=i===0?'story main':'story small';const image=s.image||'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1400&q=80';return '<article class="'+cls+'"><img src="'+esc(image)+'" alt=""><div class="copy"><div class="tag">'+esc(s.category)+' · '+esc(s.source)+'</div><h3><a href="'+esc(s.link)+'" target="_blank" rel="noopener">'+esc(s.title)+'</a></h3><div class="meta">'+esc(when(s.publishedAt))+'</div></div></article>'}
+async function loadLive(){const grid=document.querySelector('.grid'),status=document.querySelector('#now .head span');status.textContent='Refreshing real sources…';try{const r=await fetch('/api/feed');if(!r.ok)throw Error();const data=await r.json();if(!data.stories?.length)throw Error();grid.innerHTML=data.stories.slice(0,4).map(storyCard).join('');status.textContent='Live RSS feed · updated '+when(data.updatedAt);document.querySelector('.eyebrow').textContent='LIVE · '+new Date().toLocaleDateString([], {month:'long',day:'numeric',year:'numeric'})}catch(e){status.textContent='Live feed unavailable · showing prototype'}}
+function search(){const q=document.getElementById('q').value.trim();if(!q){document.getElementById('q').focus();return}window.location.href='/api/search?q='+encodeURIComponent(q)}
+document.getElementById('q').addEventListener('keydown',e=>{if(e.key==='Enter')search()});loadLive();setInterval(loadLive,300000);
 </script>
 </body></html>
