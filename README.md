@@ -1,8 +1,8 @@
-# NEXUS
+# NOVEXA
 
 **The internet, organized.**
 
-NEXUS is a premium visual discovery interface for real-time internet stories, events, gaming, technology, AI, music, culture and useful tools.
+NOVEXA is a premium visual discovery interface for real-time internet stories, events, gaming, technology, AI, music, culture and useful tools.
 
 ## Current milestone
 
