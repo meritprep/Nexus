@@ -23,9 +23,9 @@ The browser never receives the API key.
 
 ## Automatic updates
 
-`vercel.json` runs `/api/feed?limit=28` every five minutes. The homepage also refreshes the feed every five minutes.
+`vercel.json` warms `/api/feed?limit=28` daily. The homepage is the primary live-update path and refreshes the feed every five minutes while visitors are on the site.
 
-Vercel Cron Jobs can trigger Vercel Functions on a schedule, so new RSS entries can appear without a manual redeploy.
+Vercel Cron Jobs can trigger Vercel Functions on a schedule. On Vercel Hobby, scheduled Cron precision is limited, so a five-minute background warm is intended for a plan that supports per-minute Cron execution.
 
 ## Setup
 
