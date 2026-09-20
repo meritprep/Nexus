@@ -27,7 +27,7 @@ function image(item) {
 }
 
 async function readFeed(feed) {
-  const response = await fetch(feed.url, { headers: { "user-agent": "NEXUS/1.0" } });
+  const response = await fetch(feed.url, { headers: { "user-agent": "NOVEXA/1.0" } });
   if (!response.ok) throw new Error(feed.name + " returned " + response.status);
   const xml = await response.text();
   const items = [...xml.matchAll(/<(?:item|entry)(?:\s[^>]*)?>([\s\S]*?)<\/(?:item|entry)>/gi)].slice(0, 10);
