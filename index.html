@@ -146,7 +146,7 @@ const fallbackImages={
 let stories=[], activeCategory="All";
 
 function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-function safeStory(s){return JSON.stringify(s).replace(/</g,"\\u003c");}
+function safeStory(s){return encodeURIComponent(JSON.stringify(s));}
 function when(d){const x=new Date(d);return Number.isNaN(x.getTime())?"Recently":x.toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"});}
 function nexusTitle(t){
   const title=String(t||"").replace(/^\s*[^:]{1,35}:\s*/,"").replace(/\s+/g," ").trim();
@@ -159,16 +159,17 @@ function nexusSummary(s){
 }
 function imageFor(s){return s.image||fallbackImages[s.category]||fallbackImages.World;}
 function card(s,i){
-  return '<article class="story '+(i===0?"main":"small")+'" onclick="openStory(event,'+safeStory(s)+')"><img src="'+esc(imageFor(s))+'" alt="" loading="eager" decoding="async" onerror="this.src=\''+fallbackImages.World+'\'"><div class="copy"><div class="tag">'+esc(s.category)+" · "+esc(s.source)+'</div><h3>'+esc(nexusTitle(s.title))+'</h3><div class="meta">'+esc(when(s.publishedAt))+' · NEXUS</div></div></article>';
+  return '<article class="story '+(i===0?"main":"small")+'" data-story="'+esc(encodeURIComponent(JSON.stringify(s)))+'"><img src="'+esc(imageFor(s))+'" alt="" loading="eager" decoding="async" onerror="this.src=\''+fallbackImages.World+'\'"><div class="copy"><div class="tag">'+esc(s.category)+" · "+esc(s.source)+'</div><h3>'+esc(nexusTitle(s.title))+'</h3><div class="meta">'+esc(when(s.publishedAt))+' · NEXUS</div></div></article>';
 }
 function item(s){
-  return '<article class="item" onclick="openStory(event,'+safeStory(s)+')"><img src="'+esc(imageFor(s))+'" alt="" loading="lazy" onerror="this.src=\''+fallbackImages.World+'\'"><div class="item-copy"><div class="tag">'+esc(s.category)+" · "+esc(s.source)+'</div><h3>'+esc(nexusTitle(s.title))+'</h3><p>'+esc(nexusSummary(s))+'</p></div></article>';
+  return '<article class="item" data-story="'+esc(encodeURIComponent(JSON.stringify(s)))+'"><img src="'+esc(imageFor(s))+'" alt="" loading="lazy" onerror="this.src=\''+fallbackImages.World+'\'"><div class="item-copy"><div class="tag">'+esc(s.category)+" · "+esc(s.source)+'</div><h3>'+esc(nexusTitle(s.title))+'</h3><p>'+esc(nexusSummary(s))+'</p></div></article>';
 }
 function render(list){
   const grid=document.getElementById("grid"),feed=document.getElementById("feed");
   if(!list.length){grid.innerHTML='<div class="empty">No stories matched that view yet. Try another topic or search.</div>';feed.innerHTML="";return;}
   grid.innerHTML=list.slice(0,5).map(card).join("");
   feed.innerHTML=list.slice(5,20).map(item).join("");
+  document.querySelectorAll("[data-story]").forEach(el=>el.addEventListener("click",e=>openStory(e,JSON.parse(decodeURIComponent(el.dataset.story)))));
 }
 function apply(category){
   activeCategory=category;
