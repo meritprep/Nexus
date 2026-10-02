@@ -79,6 +79,7 @@ button:focus-visible,input:focus-visible,.story:focus-visible,.item:focus-visibl
 .articlehead{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:800;margin:30px 0 0}
 .readlink{display:inline-block;margin:6px 0 26px;padding:12px 18px;border-radius:999px;background:#f4f4ef;color:#090a0c;font-weight:800}
 .readlink:hover{background:var(--accent)}
+.notice{margin:18px 0 0;padding:14px 16px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;background:var(--panel);color:#c9ccd3;font:14px/1.6 Inter,system-ui,sans-serif}
 .loading{color:var(--muted);font:15px/1.6 Inter,system-ui,sans-serif}
 .source{border-top:1px solid var(--line);padding-top:16px;color:#6f747e;font-size:11px}
 
@@ -225,7 +226,8 @@ async function openReader(id){
     $("rdeck").textContent=clean(a.deck||a.summary||summary)||"NEXUS Brief";
     if(a.imageUrl){image.src=String(a.imageUrl).replace(/^http:/i,"https:");image.style.display="block"}
     $("rtext").innerHTML=sections.length?sections.map(x=>"<p>"+(x.heading?"<strong>"+esc(clean(x.heading))+"</strong><br>":"")+esc(clean(x.text))+"</p>").join(""):"<p>"+esc(clean(a.summary||summary))+"</p>";
-    $("rsource").textContent=a.note||"NEXUS Brief · Rephrased from source material.";
+    if(a.status&&a.status!=="ok"&&a.note)$("rtext").innerHTML+="<p class=\"notice\">"+esc(a.note)+"</p>";
+    $("rsource").textContent=a.status==="ok"?(a.note||""):"Source: "+base.sourceName;
   }catch{
     $("rtext").innerHTML="<p>"+esc(summary||"The detailed brief is unavailable right now.")+"</p>";
     $("rsource").textContent="NEXUS Brief · Full brief unavailable, showing the publisher's summary";
