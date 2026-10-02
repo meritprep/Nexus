@@ -1,4 +1,5 @@
-const SOURCES={"bbc.co.uk":["BBC","trending"],"theverge.com":["The Verge","tech"],"techcrunch.com":["TechCrunch","tech"],"ign.com":["IGN","gaming"],"nasa.gov":["NASA","tech"],"npr.org":["NPR","entertainment"]};
+// keep in sync with DOMAINS in feed.js
+const SOURCES={"bbc.co.uk":["BBC","top"],"bbc.com":["BBC","top"],"npr.org":["NPR","top"],"theguardian.com":["The Guardian","world"],"espn.com":["ESPN","sports"],"theverge.com":["The Verge","tech"],"techcrunch.com":["TechCrunch","tech"],"arstechnica.com":["Ars Technica","tech"],"nasa.gov":["NASA","science"],"ign.com":["IGN","gaming"],"polygon.com":["Polygon","gaming"]};
 function decodeId(id){try{return Buffer.from(id,"base64url").toString("utf8")}catch{return ""}}
 function sourceFor(url){try{const p=new URL(url);if(p.protocol!=="https:")return null;for(const [host,v] of Object.entries(SOURCES))if(p.hostname===host||p.hostname.endsWith("."+host))return{host,name:v[0],category:v[1]};return null}catch{return null}}
 function clean(v=""){return String(v||"").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,"").replace(/```(?:json|text)?/gi,"").replace(/```/g,"").replace(/\b(?:id|uuid|trace[_-]?id|request[_-]?id)\s*[:=]\s*[A-Za-z0-9_-]{12,}\b/gi,"").replace(/(?:^|\s)[A-Za-z0-9+/=_-]{32,}(?=\s|$)/g," ").replace(/\s{2,}/g," ").trim()}
