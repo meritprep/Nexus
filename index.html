@@ -17,7 +17,7 @@ button:focus-visible,input:focus-visible,.story:focus-visible,.item:focus-visibl
 
 /* top bar */
 .nav{height:72px;display:flex;align-items:center;gap:28px}
-.logo{font-weight:950;font-size:25px;letter-spacing:-.08em}
+.logo{font-weight:900;font-size:26px;letter-spacing:.02em}
 .search{flex:1;min-width:0;max-width:520px;margin-left:auto;display:flex;height:42px;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px}
 .search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#fff;padding:0 14px}
 .search button{border:0;border-radius:999px;padding:0 16px;background:#f4f4ef;color:#090a0c;font-weight:800;cursor:pointer}
@@ -47,8 +47,8 @@ button:focus-visible,input:focus-visible,.story:focus-visible,.item:focus-visibl
 .main{grid-row:span 2}
 .copy{position:absolute;z-index:2;bottom:0;left:0;right:0;padding:22px}
 .tag{font-size:9px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--accent)}
-.copy h3{font-size:25px;line-height:1.05;letter-spacing:-.04em;margin:8px 0}
-.small h3{font-size:18px}
+.copy h3{font-size:25px;line-height:1.2;letter-spacing:0;margin:8px 0}
+.small h3{font-size:18px;line-height:1.25}
 .meta{font-size:11px;color:#aaa}
 
 /* feed */
@@ -56,7 +56,7 @@ button:focus-visible,input:focus-visible,.story:focus-visible,.item:focus-visibl
 .item{border:1px solid var(--line);background:var(--panel);border-radius:10px;overflow:hidden;cursor:pointer}
 .item img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#17191d}
 .itembody{padding:16px}
-.item h3{font-size:19px;line-height:1.1;letter-spacing:-.035em;margin:8px 0}
+.item h3{font-size:19px;line-height:1.25;letter-spacing:0;margin:8px 0}
 .item p{color:var(--muted);font-size:12px;margin:0 0 10px}
 .noimg{height:100%;min-height:120px;display:grid;place-items:center;color:#555a64;font-size:9px;letter-spacing:.15em;background:#17191d}
 .empty{padding:45px;border:1px dashed var(--line);color:var(--muted);text-align:center;margin-top:12px;border-radius:12px}
@@ -72,10 +72,14 @@ button:focus-visible,input:focus-visible,.story:focus-visible,.item:focus-visibl
 .reader img{width:100%;max-height:420px;object-fit:cover;display:block}
 .readerbody{padding:28px}
 .close{float:right;border:1px solid var(--line);background:#111318;color:#fff;border-radius:8px;width:36px;height:36px;cursor:pointer}
-.reader h2{font-size:clamp(30px,5vw,56px);line-height:.98;letter-spacing:-.05em;margin:8px 0 18px}
+.reader h2{font-size:clamp(28px,4.5vw,46px);line-height:1.15;letter-spacing:0;margin:8px 0 18px}
 .reader .deck{font-size:18px;color:#b9bdc5}
 .readertext{max-width:700px;margin-top:30px}
 .readertext p{font:18px/1.8 Georgia,serif;color:#d2d3d5}
+.articlehead{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:800;margin:30px 0 0}
+.readlink{display:inline-block;margin:6px 0 26px;padding:12px 18px;border-radius:999px;background:#f4f4ef;color:#090a0c;font-weight:800}
+.readlink:hover{background:var(--accent)}
+.loading{color:var(--muted);font:15px/1.6 Inter,system-ui,sans-serif}
 .source{border-top:1px solid var(--line);padding-top:16px;color:#6f747e;font-size:11px}
 
 .footer{border-top:1px solid var(--line);margin-top:70px;padding:24px 0 45px;color:#696e77;font-size:11px;display:flex;justify-content:space-between;gap:12px}
@@ -122,7 +126,7 @@ button:focus-visible,input:focus-visible,.story:focus-visible,.item:focus-visibl
   <article class="reader">
     <button class="close" onclick="closeReader()" aria-label="Close">×</button>
     <img id="rimg" alt="">
-    <div class="readerbody"><div class="tag" id="rtag"></div><h2 id="rtitle"></h2><div class="deck" id="rdeck"></div><div class="readertext" id="rtext"></div><div class="source" id="rsource"></div></div>
+    <div class="readerbody"><div class="tag" id="rtag"></div><h2 id="rtitle"></h2><div class="deck" id="rdeck"></div><div class="articlehead">The article</div><div class="readertext" id="rtext"></div><a class="readlink" id="rlink" target="_blank" rel="noopener noreferrer" hidden></a><div class="source" id="rsource"></div></div>
   </article>
 </div>
 
@@ -155,6 +159,7 @@ function ago(d){
   return new Date(t).toLocaleDateString([],{month:"short",day:"numeric"});
 }
 const img=s=>s.imageUrl?'<img src="'+esc(s.imageUrl)+'" alt="'+esc(s.imageAlt||s.title)+'" loading="lazy" onerror="this.outerHTML=\'<div class=noimg>PHOTO UNAVAILABLE</div>\'">':'<div class="noimg">PHOTO UNAVAILABLE</div>';
+function sourceLink(id){try{const b=String(id).replace(/-/g,'+').replace(/_/g,'/'),u=new URL(decodeURIComponent(escape(atob(b))));return u.protocol==='https:'?u.href:''}catch{return''}}
 const tagLine=s=>esc(LABEL[s.category]||s.category)+' · '+esc(s.sourceName);
 
 function visible(){
@@ -211,9 +216,11 @@ async function openReader(id){
   $("rtitle").textContent=title;
   $("rdeck").textContent=summary||"NEXUS Brief";
   $("rsource").textContent="NEXUS Brief · Loading…";
-  $("rtext").innerHTML="<p>"+esc(summary||"NEXUS is preparing a brief of this story.")+"</p>";
+  $("rtext").innerHTML="<p>"+esc(summary||"")+"</p><p class=\"loading\">Loading the full article…</p>";
+  const link=sourceLink(id),rl=$("rlink");
+  if(link){rl.href=link;rl.textContent="Read the full article on "+base.sourceName.replace(/^(BBC|NPR|The Guardian)\b.*/,"$1")+" →";rl.hidden=false}else rl.hidden=true;
   if(base.imageUrl){image.src=base.imageUrl;image.alt=base.imageAlt||title;image.style.display="block"}else{image.removeAttribute("src");image.style.display="none"}
-  if(String(id).startsWith("fallback-")){$("rsource").textContent="NEXUS placeholder story";return}
+  if(String(id).startsWith("fallback-")){$("rtext").innerHTML="<p>"+esc(summary)+"</p>";$("rsource").textContent="NEXUS placeholder story";return}
   try{
     const r=await fetch("/api/article?id="+encodeURIComponent(id),{headers:{Accept:"application/json"}}),a=await r.json();
     if(!r.ok)throw new Error(a&&a.error||"Article request failed");
@@ -225,6 +232,7 @@ async function openReader(id){
     $("rtext").innerHTML=sections.length?sections.map(x=>"<p>"+(x.heading?"<strong>"+esc(clean(x.heading))+"</strong><br>":"")+esc(clean(x.text))+"</p>").join(""):"<p>"+esc(clean(a.summary||summary))+"</p>";
     $("rsource").textContent=a.note||"NEXUS Brief · Rephrased from source material.";
   }catch{
+    $("rtext").innerHTML="<p>"+esc(summary||"The detailed brief is unavailable right now.")+"</p>";
     $("rsource").textContent="NEXUS Brief · Full brief unavailable, showing the publisher's summary";
   }
 }
