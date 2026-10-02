@@ -50,7 +50,17 @@ function guessAi(title,description,category){
   const text=(title+" "+description).toLowerCase();
   return /\bai\b|openai|chatgpt|gemini|claude|anthropic|artificial intelligence|machine learning|\bllm\b|chatbot/.test(text)?"ai":category;
 }
-async function pageImage(url){if(!allowed(url))return "";try{const r=await fetch(url,{headers:{"user-agent":"NEXUS/1.0 (+live-reader)"},signal:AbortSignal.timeout(6000)});if(!r.ok)return "";const h=(await r.text()).slice(0,500000);const m=h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)||h.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);return m?.[1]||"";}catch{return "";}}
+// Follow redirects by hand so every hop stays on an allowed host.
+async function safeFetch(url,opts,hops=3){
+  for(let i=0;i<=hops;i++){
+    if(!allowed(url))throw new Error("blocked host");
+    const r=await fetch(url,{...opts,redirect:"manual"}),loc=r.headers?.get?.("location");
+    if(r.status>=300&&r.status<400&&loc){url=new URL(loc,url).href;continue;}
+    return r;
+  }
+  throw new Error("too many redirects");
+}
+async function pageImage(url){if(!allowed(url))return "";try{const r=await safeFetch(url,{headers:{"user-agent":"NEXUS/1.0 (+live-reader)"},signal:AbortSignal.timeout(6000)});if(!r.ok)return "";const h=(await r.text()).slice(0,500000);const m=h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)||h.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);return m?.[1]||"";}catch{return "";}}
 async function readFeed(feed){
   const r=await fetch(feed.url,{headers:{"user-agent":"NEXUS/1.0 (+live-feed)"},signal:AbortSignal.timeout(8000)});
   if(!r.ok)throw new Error(feed.name+" returned "+r.status);
@@ -64,7 +74,7 @@ async function readFeed(feed){
     const title=tag(raw,"title");
     const summary=(tag(raw,"description")||tag(raw,"summary")||tag(raw,"content")).slice(0,300);
     const category=guessAi(title,summary,feed.category);
-    return{id:link?idFor(link):"",kind:"article",category,title,summary,publishedAt:tag(raw,"pubDate")||tag(raw,"published")||tag(raw,"updated")||tag(raw,"dc:date"),sourceName:feed.name,imageUrl:imageFor(raw),imageAlt:title,_sourceUrl:link};
+    return{id:link?idFor(link):"",kind:"article",category,title,summary,publishedAt:tag(raw,"pubDate")||tag(raw,"published")||tag(raw,"updated")||tag(raw,"dc:date"),tags:[category,feed.name],sourceName:feed.name,imageUrl:imageFor(raw),imageAlt:title,imageCredit:feed.name+" / publisher feed",readingMinutes:4,desk:category==="ai"?"AI":feed.name,_sourceUrl:link};
   }).filter(x=>x.title&&x._sourceUrl&&allowed(x._sourceUrl));
 }
 function dedupe(stories){const seen=new Set();return stories.filter(s=>{if(seen.has(s.id))return false;seen.add(s.id);return true;});}
@@ -74,11 +84,11 @@ function balance(stories){
   return stories.filter(s=>(counts[s.category]=(counts[s.category]||0)+1)<=PER_CATEGORY);
 }
 export default async function handler(req,res){
-  res.setHeader("Cache-Control","s-maxage=300, stale-while-revalidate=600");
   res.setHeader("Content-Type","application/json; charset=utf-8");
   const q=String(req.query?.q||"").trim().toLowerCase(),category=String(req.query?.category||"").trim().toLowerCase();
   try{
     const results=await Promise.allSettled(FEEDS.map(readFeed));
+    if(results.every(x=>x.status==="rejected"))throw new Error("All news sources failed");
     let stories=dedupe(results.flatMap(x=>x.status==="fulfilled"?x.value:[]));
     stories.sort((a,b)=>new Date(b.publishedAt||0)-new Date(a.publishedAt||0));
     stories=balance(stories);
@@ -87,7 +97,8 @@ export default async function handler(req,res){
     const missing=stories.filter(x=>!x.imageUrl).slice(0,MAX_PAGE_IMAGES);
     const map=new Map(await Promise.all(missing.map(async x=>[x.id,await pageImage(x._sourceUrl)])));
     const failed=results.map((x,i)=>x.status==="rejected"?FEEDS[i].name:null).filter(Boolean);
+    res.setHeader("Cache-Control","s-maxage=300, stale-while-revalidate=600");
     res.status(200).json({updatedAt:new Date().toISOString(),sourceCount:results.length-failed.length,failedSources:failed,stories:stories.map(x=>({...x,imageUrl:x.imageUrl||map.get(x.id)||"",_sourceUrl:undefined}))});
-  }catch(error){res.status(502).json({error:"Live news is temporarily unavailable.",detail:String(error?.message||error)});}
+  }catch(error){res.setHeader("Cache-Control","no-store");res.status(502).json({error:"Live news is temporarily unavailable.",detail:String(error?.message||error)});}
 }
 export {idFor,feedFor,strip};
