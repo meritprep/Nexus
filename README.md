@@ -14,6 +14,6 @@ Connect this GitHub repository to Vercel; pushes to the production branch deploy
 
 ## Article briefs
 
-When a story is opened, `api/article.js` fetches the publisher's page, extracts the reporting, and has an AI write an original brief in its own words (attributed to the publisher, with a link to the original). Safeguards: it only uses facts in the source, skips pages with too little text (paywalls), rejects drafts that reuse the publisher's wording (8-word overlap check, one retry), and falls back to the publisher's own summary if anything fails. Briefs are cached for a day.
+When a story is opened, `api/article.js` fetches the publisher's page, extracts the reporting, and has Claude write an original brief in its own words (attributed to the publisher, with a link to the original). Safeguards: it only uses facts in the source, skips pages with too little text (paywalls), rejects drafts that reuse the publisher's wording (8-word overlap check, one retry), and falls back to the publisher's own summary if anything fails. Briefs are cached for a day.
 
-Set `OPENAI_API_KEY` as a server-side Vercel environment variable to enable this. Set `OPENAI_MODEL` if you need to use a different model than the default in `api/article.js`. Without a key, the reader shows the publisher's summary and the link.
+Set `ANTHROPIC_API_KEY` as a server-side Vercel environment variable to enable this (the briefs are written by Claude through the official `@anthropic-ai/sdk`). The default model is `claude-opus-5-5`; set `ANTHROPIC_MODEL` to use a cheaper, faster one such as `claude-sonnet-5-5` or `claude-haiku-4-5`. Without a key, the reader shows the publisher's summary and the link.
