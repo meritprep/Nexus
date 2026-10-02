@@ -212,12 +212,12 @@ async function openReader(id){
   $("rtitle").textContent=title;
   $("rdeck").textContent=summary||"NEXUS Brief";
   $("rsource").textContent="NEXUS Brief · Loading…";
-  $("rtext").innerHTML="<p>"+esc(summary||"")+"</p><p class=\"loading\">Loading the full article…</p>";
+  $("rtext").innerHTML="<p>"+esc(summary||"")+"</p><p class=\"loading\">Writing the NEXUS brief from the publisher\u2019s reporting\u2026 this can take up to 30 seconds.</p>";
   const link=sourceLink(id),rl=$("rlink");
   if(link){rl.href=link;rl.textContent="Read the full article on "+base.sourceName.replace(/^(BBC|NPR|The Guardian)\b.*/,"$1")+" →";rl.hidden=false}else rl.hidden=true;
   if(base.imageUrl){image.src=base.imageUrl;image.alt=base.imageAlt||title;image.style.display="block"}else{image.removeAttribute("src");image.style.display="none"}
   try{
-    const r=await fetch("/api/article?id="+encodeURIComponent(id),{headers:{Accept:"application/json"}}),a=await r.json();
+    const r=await fetch("/api/article?id="+encodeURIComponent(id),{headers:{Accept:"application/json"},signal:AbortSignal.timeout(58000)}),a=await r.json();
     if(!r.ok)throw new Error(a&&a.error||"Article request failed");
     if(!$("modal").classList.contains("show")||$("rtitle").textContent!==title)return; // user moved on
     const sections=Array.isArray(a.sections)?a.sections.filter(x=>x&&x.text):[];

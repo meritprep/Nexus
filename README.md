@@ -12,4 +12,8 @@ A live news site with a category switcher: Top, World, U.S., Politics, Business,
 
 Connect this GitHub repository to Vercel; pushes to the production branch deploy automatically.
 
-Set `OPENAI_API_KEY` as a server-side Vercel environment variable for original Brief generation. Without it, the reader falls back to the publisher's summary.
+## Article briefs
+
+When a story is opened, `api/article.js` fetches the publisher's page, extracts the reporting, and has an AI write an original brief in its own words (attributed to the publisher, with a link to the original). Safeguards: it only uses facts in the source, skips pages with too little text (paywalls), rejects drafts that reuse the publisher's wording (8-word overlap check, one retry), and falls back to the publisher's own summary if anything fails. Briefs are cached for a day.
+
+Set `OPENAI_API_KEY` as a server-side Vercel environment variable to enable this. Set `OPENAI_MODEL` if you need to use a different model than the default in `api/article.js`. Without a key, the reader shows the publisher's summary and the link.

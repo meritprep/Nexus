@@ -7,8 +7,11 @@
     }
   ],
   "functions": {
-    "api/*.js": {
+    "api/feed.js": {
       "maxDuration": 30
+    },
+    "api/article.js": {
+      "maxDuration": 60
     }
   }
 }
