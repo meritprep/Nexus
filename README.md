@@ -2,14 +2,18 @@
 
 **The internet, organized.**
 
-This repository is the new NEXUS React/Vite site, replacing the previous prototype.
+A live news site with a category switcher: Top, World, U.S., Politics, Business, Technology, AI, Science, Health, Sports, Entertainment, Gaming, Music, Environment, Food and Travel.
 
-The site uses live RSS-backed content through the server-side `/api/feed` route and keeps article reading inside NEXUS at `/c/:slug` and `/a/:id`.
-
-The source archive restores the full 83-file React/Vite project before every dev/build/typecheck command, while the server API files remain at the repository root for Vercel.
+- `index.html` is the whole front end. It fetches `/api/feed` once, then switches categories in the browser. The URL hash deep-links to a category (e.g. `/#sports`).
+- `api/feed.js` reads RSS feeds from BBC, NPR, The Guardian, ESPN, The Verge, TechCrunch, Ars Technica, NASA, IGN and Polygon, assigns each story a category, removes duplicates, and returns the newest stories per category. To add a category, add feeds to `FEEDS` and an entry to `CATEGORIES` in `index.html`. To add a source domain, add it to `DOMAINS` in `api/feed.js` and `SOURCES` in `api/article.js`.
+- `api/article.js` builds the in-site reader brief for a clicked story.
 
 ## Deploy
 
-Connect this GitHub repository to Vercel. Vercel Git Integration can automatically deploy commits pushed to the configured production branch. citeturn870238search2turn870238search7
+Connect this GitHub repository to Vercel; pushes to the production branch deploy automatically.
 
-Set `OPENAI_API_KEY` as a server-side Vercel environment variable for original Brief generation.
+## Article briefs
+
+When a story is opened, `api/article.js` fetches the publisher's page, extracts the reporting, and has Claude write an original brief in its own words (attributed to the publisher, with a link to the original). Safeguards: it only uses facts in the source, skips pages with too little text (paywalls), rejects drafts that reuse the publisher's wording (8-word overlap check, one retry), and falls back to the publisher's own summary if anything fails. Briefs are cached for a day.
+
+Set `ANTHROPIC_API_KEY` as a server-side Vercel environment variable to enable this (the briefs are written by Claude through the official `@anthropic-ai/sdk`). The default model is `claude-opus-5-5`; set `ANTHROPIC_MODEL` to use a cheaper, faster one such as `claude-sonnet-5-5` or `claude-haiku-4-5`. Without a key, the reader shows the publisher's summary and the link.
