@@ -105,7 +105,7 @@ button:focus-visible,input:focus-visible,.story:focus-visible,.item:focus-visibl
 <body>
 <header class="wrap nav">
   <a class="logo" href="#top">NEXUS</a>
-  <span class="live">● Live</span>
+  <span class="live" id="live">● Live</span>
   <form class="search" id="form" role="search">
     <input id="q" type="search" placeholder="Search news…" aria-label="Search news" autocomplete="off">
     <button>Search</button>
@@ -140,14 +140,7 @@ const CATEGORIES=[
 ];
 const LABEL=Object.fromEntries(CATEGORIES);
 const LEAD=5,PAGE=12;
-const hoursAgo=h=>new Date(Date.now()-h*3600000).toISOString();
-const FALLBACK_STORIES=[
-  ["tech","How the web is changing around you"],["world","What is moving in the world right now"],
-  ["ai","AI tools are becoming part of everyday software"],["sports","The matches and moments fans are talking about"],
-  ["entertainment","What is shaping internet culture"],["science","New discoveries from labs and observatories"]
-].map(([category,title],i)=>({id:"fallback-"+i,category,title,summary:"Live sources are reconnecting. This placeholder keeps the page usable.",publishedAt:hoursAgo(i+1),sourceName:"NEXUS"}));
-
-let all=[],active=CATEGORIES.some(c=>c[0]===location.hash.slice(1))?location.hash.slice(1):"top",term="",shown=PAGE,updatedAt=null,usingFallback=false;
+let all=[],active=CATEGORIES.some(c=>c[0]===location.hash.slice(1))?location.hash.slice(1):"top",term="",shown=PAGE,updatedAt=null,failed=false;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const clean=(v="")=>String(v||"").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,"").replace(/```(?:json|text)?/gi,"").replace(/\s{2,}/g," ").trim();
@@ -158,7 +151,7 @@ function ago(d){
   if(m<1440)return Math.round(m/60)+"h ago";
   return new Date(t).toLocaleDateString([],{month:"short",day:"numeric"});
 }
-const img=s=>s.imageUrl?'<img src="'+esc(s.imageUrl)+'" alt="'+esc(s.imageAlt||s.title)+'" loading="lazy" onerror="this.outerHTML=\'<div class=noimg>PHOTO UNAVAILABLE</div>\'">':'<div class="noimg">PHOTO UNAVAILABLE</div>';
+const img=s=>s.imageUrl?'<img src="'+esc(String(s.imageUrl).replace(/^http:/i,"https:"))+'" alt="'+esc(s.imageAlt||s.title)+'" loading="lazy" onerror="this.outerHTML=\'<div class=noimg>PHOTO UNAVAILABLE</div>\'">':'<div class="noimg">PHOTO UNAVAILABLE</div>';
 function sourceLink(id){try{const b=String(id).replace(/-/g,'+').replace(/_/g,'/'),u=new URL(decodeURIComponent(escape(atob(b))));return u.protocol==='https:'?u.href:''}catch{return''}}
 const tagLine=s=>esc(LABEL[s.category]||s.category)+' · '+esc(s.sourceName);
 
@@ -171,8 +164,8 @@ function counts(){const c={top:all.length};all.forEach(s=>c[s.category]=(c[s.cat
 function renderTabs(){
   const c=counts();
   $("cats").innerHTML=CATEGORIES.map(([id,name])=>'<button class="cat'+(id===active?' on':'')+'" data-cat="'+id+'"'+(id===active?' aria-current="true"':'')+'>'+name+(all.length?'<small>'+(c[id]||0)+'</small>':'')+'</button>').join("");
-  const on=$("cats").querySelector(".on");if(on)on.scrollIntoView({inline:"center",block:"nearest"});
 }
+function revealTab(){const on=$("cats").querySelector(".on");if(on)on.scrollIntoView({inline:"center",block:"nearest"})}
 function render(){
   const list=visible(),name=LABEL[active];
   $("heading").textContent=term?name+' · "'+term+'"':name;
@@ -182,29 +175,31 @@ function render(){
   const rest=list.slice(LEAD,LEAD+shown);
   $("feed").innerHTML=rest.map(s=>'<article class="item" tabindex="0" data-id="'+esc(s.id)+'">'+img(s)+'<div class="itembody"><div class="tag">'+tagLine(s)+' · '+ago(s.publishedAt)+'</div><h3>'+esc(s.title)+'</h3><p>'+esc(s.summary||"")+'</p></div></article>').join("");
   $("more").innerHTML=list.length>LEAD+shown?'<button class="morebtn" id="morebtn">Show more '+esc(name)+'</button>':"";
-  if(!list.length&&all.length){
+  if(!all.length&&failed){
+    $("feed").innerHTML='<div class="empty" style="grid-column:1/-1">Live news is temporarily unavailable. NEXUS could not reach its news sources, so there are no stories to show right now.<br><br><button id="retry">Try again</button></div>';
+  }else if(!list.length&&all.length){
     $("feed").innerHTML='<div class="empty" style="grid-column:1/-1">'+(term?'No '+esc(name)+' stories match “'+esc(term)+'”. ':'No '+esc(name)+' stories right now. ')+'<br><br><button id="reset">'+(term?"Clear search":"Back to Top")+'</button></div>';
   }
-  $("status").textContent=usingFallback?"Live sources unavailable · showing placeholders":all.length?"Updated "+ago(updatedAt):"Loading live stories…";
+  $("status").textContent=failed?(all.length?"Couldn't refresh · showing stories from "+ago(updatedAt):"Live sources unavailable"):all.length?"Updated "+ago(updatedAt):"Loading live stories…";
+  $("live").textContent=failed?"● Offline":"● Live";
   renderTabs();
 }
 function setCategory(id,push=true){
   if(!LABEL[id])return;
   active=id;shown=PAGE;
   if(push&&location.hash.slice(1)!==id)history.pushState(null,"","#"+id);
-  render();window.scrollTo({top:Math.min(window.scrollY,$("cats").offsetTop),behavior:"smooth"});
+  render();revealTab();window.scrollTo({top:Math.min(window.scrollY,$("cats").offsetTop),behavior:"smooth"});
 }
 
 async function load(){
-  if(!all.length)$("grid").innerHTML='<div class="skel main"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div>';
+  const first=!all.length;
+  if(first)$("grid").innerHTML='<div class="skel main"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div>';
   try{
     const r=await fetch("/api/feed"),d=await r.json();
     if(!r.ok||!d.stories||!d.stories.length)throw new Error(d.error||"No stories");
-    all=d.stories;updatedAt=d.updatedAt;usingFallback=false;
-  }catch{
-    if(!all.length){all=FALLBACK_STORIES.slice();usingFallback=true}
-  }
-  render();
+    all=d.stories;updatedAt=d.updatedAt;failed=false;
+  }catch{failed=true}
+  render();if(first)revealTab();
 }
 
 /* reader */
@@ -212,7 +207,8 @@ async function openReader(id){
   const base=all.find(s=>s.id===id);if(!base)return;
   const modal=$("modal"),image=$("rimg"),title=clean(base.title),summary=clean(base.summary);
   modal.classList.add("show");document.body.style.overflow="hidden";modal.scrollTop=0;
-  $("rtag").textContent=(LABEL[base.category]||base.category)+" · "+base.sourceName;
+  $("rtag").textContent=(LABEL[base.category]||base.category)+" · "+base.sourceName+" · "+ago(base.publishedAt);
+  lastFocus=document.activeElement;$("modal").querySelector(".close").focus();
   $("rtitle").textContent=title;
   $("rdeck").textContent=summary||"NEXUS Brief";
   $("rsource").textContent="NEXUS Brief · Loading…";
@@ -220,7 +216,6 @@ async function openReader(id){
   const link=sourceLink(id),rl=$("rlink");
   if(link){rl.href=link;rl.textContent="Read the full article on "+base.sourceName.replace(/^(BBC|NPR|The Guardian)\b.*/,"$1")+" →";rl.hidden=false}else rl.hidden=true;
   if(base.imageUrl){image.src=base.imageUrl;image.alt=base.imageAlt||title;image.style.display="block"}else{image.removeAttribute("src");image.style.display="none"}
-  if(String(id).startsWith("fallback-")){$("rtext").innerHTML="<p>"+esc(summary)+"</p>";$("rsource").textContent="NEXUS placeholder story";return}
   try{
     const r=await fetch("/api/article?id="+encodeURIComponent(id),{headers:{Accept:"application/json"}}),a=await r.json();
     if(!r.ok)throw new Error(a&&a.error||"Article request failed");
@@ -228,7 +223,7 @@ async function openReader(id){
     const sections=Array.isArray(a.sections)?a.sections.filter(x=>x&&x.text):[];
     $("rtitle").textContent=clean(a.title||title);
     $("rdeck").textContent=clean(a.deck||a.summary||summary)||"NEXUS Brief";
-    if(a.imageUrl){image.src=a.imageUrl;image.style.display="block"}
+    if(a.imageUrl){image.src=String(a.imageUrl).replace(/^http:/i,"https:");image.style.display="block"}
     $("rtext").innerHTML=sections.length?sections.map(x=>"<p>"+(x.heading?"<strong>"+esc(clean(x.heading))+"</strong><br>":"")+esc(clean(x.text))+"</p>").join(""):"<p>"+esc(clean(a.summary||summary))+"</p>";
     $("rsource").textContent=a.note||"NEXUS Brief · Rephrased from source material.";
   }catch{
@@ -236,12 +231,14 @@ async function openReader(id){
     $("rsource").textContent="NEXUS Brief · Full brief unavailable, showing the publisher's summary";
   }
 }
-function closeReader(){$("modal").classList.remove("show");document.body.style.overflow=""}
+let lastFocus=null;
+function closeReader(){$("modal").classList.remove("show");document.body.style.overflow="";if(lastFocus&&lastFocus.focus)lastFocus.focus()}
 
 /* events */
 document.addEventListener("click",e=>{
   const card=e.target.closest(".story,.item");if(card){openReader(card.dataset.id);return}
   const c=e.target.closest("[data-cat]");if(c){setCategory(c.dataset.cat);return}
+  if(e.target.id==="retry"){load();return}
   if(e.target.id==="morebtn"){shown+=PAGE;render();return}
   if(e.target.id==="reset"){if(term){term="";$("q").value=""}else active="top";shown=PAGE;render()}
 });
@@ -251,9 +248,9 @@ document.addEventListener("keydown",e=>{
 });
 $("form").addEventListener("submit",e=>{e.preventDefault();term=$("q").value.trim();shown=PAGE;render()});
 $("q").addEventListener("input",()=>{if(!$("q").value.trim()&&term){term="";shown=PAGE;render()}});
-window.addEventListener("hashchange",()=>{const id=location.hash.slice(1);if(LABEL[id]&&id!==active)setCategory(id,false)});
+window.addEventListener("hashchange",()=>{const id=location.hash.slice(1)||"top";if(LABEL[id]&&id!==active)setCategory(id,false)});
 
-renderTabs();load();setInterval(load,300000);
+renderTabs();revealTab();load();setInterval(load,300000);
 </script>
 </body>
 </html>

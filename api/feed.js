@@ -38,19 +38,31 @@ const FEEDS = [
 const DOMAINS = ["bbc.co.uk", "bbc.com", "npr.org", "theguardian.com", "espn.com", "theverge.com", "techcrunch.com", "arstechnica.com", "nasa.gov", "ign.com", "polygon.com"];
 const PER_FEED = 12, PER_CATEGORY = 24, MAX_PAGE_IMAGES = 20;
 
-function strip(value = "") { return value.replace(/<!\[CDATA\[/g,"").replace(/\]\]>/g,"").replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&#x27;/gi,"'").replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(Number(n))).replace(/\s+/g," ").trim(); }
+const NAMED={amp:"&",lt:"<",gt:">",quot:'"',apos:"'",nbsp:" ",rsquo:"\u2019",lsquo:"\u2018",rdquo:"\u201d",ldquo:"\u201c",ndash:"\u2013",mdash:"\u2014",hellip:"\u2026"};
+function decode(v){return v.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi,(m,e)=>{if(e[0]==="#"){const n=e[1].toLowerCase()==="x"?parseInt(e.slice(2),16):parseInt(e.slice(1),10);try{return String.fromCodePoint(n)}catch{return m}}return NAMED[e.toLowerCase()]??m;});}
+// Some feeds ship HTML entity-encoded (&lt;p&gt;...), so decode once first to expose the tags, then strip them.
+function strip(value=""){let v=String(value).replace(/<!\[CDATA\[/g,"").replace(/\]\]>/g,"");if(/&lt;\/?[a-z][^&]*&gt;/i.test(v))v=decode(v);return decode(v.replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]*>/g," ")).replace(/\s+/g," ").trim();}
 function tag(xml,name){const m=xml.match(new RegExp("<"+name+"(?:\\s[^>]*)?>([\\s\\S]*?)</"+name+">","i"));return m?strip(m[1]):"";}
 function attr(raw,tagName,attrName){const m=raw.match(new RegExp("<"+tagName+"[^>]*"+attrName+"=[\"']([^\"']+)[\"']","i"));return m?m[1]:"";}
 function allowed(url){try{const u=new URL(url);return u.protocol==="https:"&&DOMAINS.some(h=>u.hostname===h||u.hostname.endsWith("."+h));}catch{return false;}}
 function feedFor(url){return allowed(url)?url:null;}
-function idFor(url){return Buffer.from(url,"utf8").toString("base64url");}
-function imageFor(raw){return attr(raw,"media:content","url")||attr(raw,"media:thumbnail","url")||attr(raw,"enclosure","url")||"";}
+function canonical(url){try{const u=new URL(url);u.hash="";for(const k of [...u.searchParams.keys()])if(/^(utm_|at_|ocid|ftag|cmpid|ito|xtor|CMP)/i.test(k))u.searchParams.delete(k);return u.href;}catch{return url;}}
+function idFor(url){return Buffer.from(canonical(url),"utf8").toString("base64url");}
+function imageFor(raw){
+  const isImg=(url,type)=>/^https?:/i.test(url)&&(/^image\//i.test(type||"")||(!type&&/\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(url)));
+  for(const m of raw.matchAll(/<(media:content|media:thumbnail|enclosure)\b[^>]*>/gi)){
+    const t=m[0],url=(t.match(/\burl=["']([^"']+)["']/i)||[])[1],type=(t.match(/\btype=["']([^"']+)["']/i)||[])[1],medium=(t.match(/\bmedium=["']([^"']+)["']/i)||[])[1];
+    if(url&&(medium==="image"||isImg(url,type)||(m[1].toLowerCase()==="media:thumbnail"&&!type)))return url.replace(/^http:/i,"https:");
+  }
+  return "";
+}
 function guessAi(title,description,category){
   if(!["top","tech","business","science"].includes(category))return category;
-  const text=(title+" "+description).toLowerCase();
-  return /\bai\b|openai|chatgpt|gemini|claude|anthropic|artificial intelligence|machine learning|\bllm\b|chatbot/.test(text)?"ai":category;
+  const text=title+" "+description;
+  // "AI" must be upper-case so names like "Ai Weiwei" don't match; product names need their company context.
+  const hit=/\bAI\b/.test(text)||/openai|chatgpt|anthropic|artificial intelligence|machine learning|generative ai|large language model|chatbot|google gemini|gemini ai|claude (ai|code|opus|sonnet|haiku)/i.test(text);
+  return hit?"ai":category;
 }
-// Follow redirects by hand so every hop stays on an allowed host.
 async function safeFetch(url,opts,hops=3){
   for(let i=0;i<=hops;i++){
     if(!allowed(url))throw new Error("blocked host");
@@ -60,9 +72,9 @@ async function safeFetch(url,opts,hops=3){
   }
   throw new Error("too many redirects");
 }
-async function pageImage(url){if(!allowed(url))return "";try{const r=await safeFetch(url,{headers:{"user-agent":"NEXUS/1.0 (+live-reader)"},signal:AbortSignal.timeout(6000)});if(!r.ok)return "";const h=(await r.text()).slice(0,500000);const m=h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)||h.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);return m?.[1]||"";}catch{return "";}}
+async function pageImage(url){if(!allowed(url))return "";try{const r=await safeFetch(url,{headers:{"user-agent":"NEXUS/1.0 (+live-reader)"},signal:AbortSignal.timeout(4000)});if(!r.ok)return "";const h=(await r.text()).slice(0,500000);const m=h.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)||h.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);return m?.[1]||"";}catch{return "";}}
 async function readFeed(feed){
-  const r=await fetch(feed.url,{headers:{"user-agent":"NEXUS/1.0 (+live-feed)"},signal:AbortSignal.timeout(8000)});
+  const r=await fetch(feed.url,{headers:{"user-agent":"NEXUS/1.0 (+live-feed)"},signal:AbortSignal.timeout(6000)});
   if(!r.ok)throw new Error(feed.name+" returned "+r.status);
   const xml=await r.text();
   const chunks=[...xml.matchAll(/<(?:item|entry)(?:\s[^>]*)?>([\s\S]*?)<\/(?:item|entry)>/gi)].slice(0,PER_FEED);
@@ -74,10 +86,11 @@ async function readFeed(feed){
     const title=tag(raw,"title");
     const summary=(tag(raw,"description")||tag(raw,"summary")||tag(raw,"content")).slice(0,300);
     const category=guessAi(title,summary,feed.category);
-    return{id:link?idFor(link):"",kind:"article",category,title,summary,publishedAt:tag(raw,"pubDate")||tag(raw,"published")||tag(raw,"updated")||tag(raw,"dc:date"),tags:[category,feed.name],sourceName:feed.name,imageUrl:imageFor(raw),imageAlt:title,imageCredit:feed.name+" / publisher feed",readingMinutes:4,desk:category==="ai"?"AI":feed.name,_sourceUrl:link};
+    return{id:link?idFor(link):"",kind:"article",category,title,summary,publishedAt:safeDate(tag(raw,"pubDate")||tag(raw,"published")||tag(raw,"updated")||tag(raw,"dc:date")),tags:[category,feed.name],sourceName:feed.name,imageUrl:imageFor(raw),imageAlt:title,imageCredit:feed.name+" / publisher feed",readingMinutes:4,desk:category==="ai"?"AI":feed.name,_sourceUrl:link};
   }).filter(x=>x.title&&x._sourceUrl&&allowed(x._sourceUrl));
 }
-function dedupe(stories){const seen=new Set();return stories.filter(s=>{if(seen.has(s.id))return false;seen.add(s.id);return true;});}
+function safeDate(v){const t=new Date(v).getTime();return isNaN(t)?"":new Date(Math.min(t,Date.now())).toISOString();}
+function dedupe(stories){const ids=new Set(),titles=new Set();return stories.filter(s=>{const t=s.title.toLowerCase().replace(/\W+/g," ").trim();if(ids.has(s.id)||titles.has(t))return false;ids.add(s.id);titles.add(t);return true;});}
 function balance(stories){
   // newest first, but never more than PER_CATEGORY per category so busy desks don't crowd out quiet ones
   const counts={};
