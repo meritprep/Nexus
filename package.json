@@ -1,0 +1,10 @@
+{
+  "name": "nexus",
+  "private": true,
+  "type": "module",
+  "description": "NEXUS: live news by category with AI-written briefs",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0"
+  }
+}
